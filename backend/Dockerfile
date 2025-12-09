@@ -12,8 +12,9 @@ COPY . .
 # 创建数据目录
 RUN mkdir -p /app/data
 
-# 暴露端口
+# 默认端口（可通过环境变量 PORT 覆盖）
+ENV PORT=5001
 EXPOSE 5001
 
-# 启动命令
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5001"]
+# 启动命令（使用 shell 形式以支持环境变量）
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
