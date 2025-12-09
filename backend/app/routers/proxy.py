@@ -476,7 +476,17 @@ async def gemini_generate_content(
                 raise HTTPException(status_code=response.status_code, detail=response.text)
             
             await log_usage()
-            return JSONResponse(content=response.json())
+            
+            # 转换响应格式：从内部格式转为标准 Gemini API 格式
+            result = response.json()
+            if "response" in result:
+                # 内部 API 格式: {"response": {"candidates": [...]}, "modelVersion": "..."}
+                # 转为标准格式: {"candidates": [...], "modelVersion": "..."}
+                standard_result = result.get("response", {})
+                if "modelVersion" in result:
+                    standard_result["modelVersion"] = result["modelVersion"]
+                return JSONResponse(content=standard_result)
+            return JSONResponse(content=result)
     
     except HTTPException:
         raise
@@ -586,7 +596,22 @@ async def gemini_stream_generate_content(
                     
                     async for line in response.aiter_lines():
                         if line:
-                            yield f"{line}\n"
+                            # 转换 SSE 数据格式
+                            if line.startswith("data: "):
+                                try:
+                                    data = json.loads(line[6:])
+                                    if "response" in data:
+                                        # 转换格式
+                                        standard_data = data.get("response", {})
+                                        if "modelVersion" in data:
+                                            standard_data["modelVersion"] = data["modelVersion"]
+                                        yield f"data: {json.dumps(standard_data)}\n\n"
+                                    else:
+                                        yield f"{line}\n"
+                                except:
+                                    yield f"{line}\n"
+                            else:
+                                yield f"{line}\n"
             
             await log_usage()
         except Exception as e:
