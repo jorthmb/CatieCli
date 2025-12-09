@@ -33,6 +33,15 @@ export default function Admin() {
   const [verifyingAll, setVerifyingAll] = useState(false)
   const [verifyResult, setVerifyResult] = useState(null)
 
+  // 模态框状态
+  const [alertModal, setAlertModal] = useState({ open: false, title: '', message: '', type: 'info' })
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
+  const [inputModal, setInputModal] = useState({ open: false, title: '', label: '', defaultValue: '', onSubmit: null })
+
+  const showAlert = (title, message, type = 'info') => setAlertModal({ open: true, title, message, type })
+  const showConfirm = (title, message, onConfirm, danger = false) => setConfirmModal({ open: true, title, message, onConfirm, danger })
+  const showInput = (title, label, defaultValue, onSubmit) => setInputModal({ open: true, title, label, defaultValue, onSubmit })
+
   // WebSocket 实时更新
   const handleWsMessage = useCallback((data) => {
     console.log('WS:', data.type)
@@ -80,30 +89,34 @@ export default function Admin() {
       await api.put(`/api/admin/users/${userId}`, { is_active: !isActive })
       fetchData()
     } catch (err) {
-      alert('操作失败')
+      showAlert('操作失败', '用户状态更新失败', 'error')
     }
   }
 
-  const updateUserQuota = async (userId, quota) => {
-    const newQuota = prompt('设置每日配额:', quota)
-    if (newQuota && !isNaN(newQuota)) {
-      try {
-        await api.put(`/api/admin/users/${userId}`, { daily_quota: parseInt(newQuota) })
-        fetchData()
-      } catch (err) {
-        alert('操作失败')
+  const updateUserQuota = (userId, quota) => {
+    showInput('设置配额', '每日请求配额（次/天）', quota, async (newQuota) => {
+      if (newQuota && !isNaN(newQuota)) {
+        try {
+          await api.put(`/api/admin/users/${userId}`, { daily_quota: parseInt(newQuota) })
+          fetchData()
+          showAlert('成功', '配额已更新', 'success')
+        } catch (err) {
+          showAlert('操作失败', '配额更新失败', 'error')
+        }
       }
-    }
+    })
   }
 
-  const deleteUser = async (userId) => {
-    if (!confirm('确定删除此用户?')) return
-    try {
-      await api.delete(`/api/admin/users/${userId}`)
-      fetchData()
-    } catch (err) {
-      alert(err.response?.data?.detail || '删除失败')
-    }
+  const deleteUser = (userId) => {
+    showConfirm('删除用户', '确定删除此用户？此操作不可恢复！', async () => {
+      try {
+        await api.delete(`/api/admin/users/${userId}`)
+        fetchData()
+        showAlert('成功', '用户已删除', 'success')
+      } catch (err) {
+        showAlert('删除失败', err.response?.data?.detail || '删除用户失败', 'error')
+      }
+    }, true)
   }
 
   // 凭证操作
@@ -114,8 +127,9 @@ export default function Admin() {
       setNewCredName('')
       setNewCredKey('')
       fetchData()
+      showAlert('成功', '凭证添加成功', 'success')
     } catch (err) {
-      alert('添加失败')
+      showAlert('添加失败', '凭证添加失败', 'error')
     }
   }
 
@@ -124,33 +138,37 @@ export default function Admin() {
       await api.put(`/api/admin/credentials/${credId}`, { is_active: !isActive })
       fetchData()
     } catch (err) {
-      alert('操作失败')
+      showAlert('操作失败', '凭证状态更新失败', 'error')
     }
   }
 
-  const deleteCredential = async (credId) => {
-    if (!confirm('确定删除此凭证?')) return
-    try {
-      await api.delete(`/api/admin/credentials/${credId}`)
-      fetchData()
-    } catch (err) {
-      alert('删除失败')
-    }
+  const deleteCredential = (credId) => {
+    showConfirm('删除凭证', '确定删除此凭证？此操作不可恢复！', async () => {
+      try {
+        await api.delete(`/api/admin/credentials/${credId}`)
+        fetchData()
+        showAlert('成功', '凭证已删除', 'success')
+      } catch (err) {
+        showAlert('删除失败', '凭证删除失败', 'error')
+      }
+    }, true)
   }
 
-  const verifyAllCredentials = async () => {
-    if (!confirm('确定要检测所有凭证？这可能需要一些时间。')) return
-    setVerifyingAll(true)
-    setVerifyResult(null)
-    try {
-      const res = await api.post('/api/manage/credentials/verify-all')
-      setVerifyResult(res.data)
-      fetchData()
-    } catch (err) {
-      alert('检测失败: ' + (err.response?.data?.detail || err.message))
-    } finally {
-      setVerifyingAll(false)
-    }
+  const verifyAllCredentials = () => {
+    showConfirm('检测凭证', '确定要检测所有凭证？这可能需要一些时间。', async () => {
+      setVerifyingAll(true)
+      setVerifyResult(null)
+      try {
+        const res = await api.post('/api/manage/credentials/verify-all')
+        setVerifyResult(res.data)
+        fetchData()
+        showAlert('检测完成', `有效: ${res.data.valid}, 无效: ${res.data.invalid}, Pro: ${res.data.pro}`, 'success')
+      } catch (err) {
+        showAlert('检测失败', err.response?.data?.detail || err.message, 'error')
+      } finally {
+        setVerifyingAll(false)
+      }
+    })
   }
 
   const exportAllCredentials = async () => {
@@ -165,9 +183,9 @@ export default function Admin() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      alert('导出成功!')
+      showAlert('导出成功', '凭证已导出为 JSON 文件', 'success')
     } catch (err) {
-      alert('导出失败: ' + (err.response?.data?.detail || err.message))
+      showAlert('导出失败', err.response?.data?.detail || err.message, 'error')
     }
   }
 
@@ -220,6 +238,28 @@ export default function Admin() {
     }))
   }
 
+  // 使用日志：搜索、分页
+  const [logSearch, setLogSearch] = useState('')
+  const [logPage, setLogPage] = useState(1)
+  const logsPerPage = 30
+
+  const processedLogs = (() => {
+    let result = [...logs]
+    if (logSearch.trim()) {
+      const search = logSearch.toLowerCase()
+      result = result.filter(log => 
+        log.username?.toLowerCase().includes(search) ||
+        log.model?.toLowerCase().includes(search) ||
+        log.endpoint?.toLowerCase().includes(search) ||
+        String(log.status_code).includes(search)
+      )
+    }
+    return result
+  })()
+
+  const totalLogPages = Math.ceil(processedLogs.length / logsPerPage)
+  const paginatedLogs = processedLogs.slice((logPage - 1) * logsPerPage, logPage * logsPerPage)
+
   // 配额设置相关
   const [defaultQuota, setDefaultQuota] = useState(100)
   const [batchQuota, setBatchQuota] = useState('')
@@ -227,21 +267,23 @@ export default function Admin() {
   const updateDefaultQuota = async () => {
     try {
       await api.post('/api/admin/settings/default-quota', { quota: defaultQuota })
-      alert('默认配额已更新')
+      showAlert('成功', '默认配额已更新', 'success')
     } catch (err) {
-      alert('更新失败')
+      showAlert('更新失败', '配额更新失败', 'error')
     }
   }
 
-  const applyQuotaToAll = async () => {
-    if (!batchQuota || !confirm(`确定将所有用户配额设为 ${batchQuota} 次/天？`)) return
-    try {
-      await api.post('/api/admin/settings/batch-quota', { quota: parseInt(batchQuota) })
-      alert('批量更新成功')
-      fetchData()
-    } catch (err) {
-      alert('更新失败')
-    }
+  const applyQuotaToAll = () => {
+    if (!batchQuota) return
+    showConfirm('批量设置配额', `确定将所有用户配额设为 ${batchQuota} 次/天？`, async () => {
+      try {
+        await api.post('/api/admin/settings/batch-quota', { quota: parseInt(batchQuota) })
+        showAlert('成功', '批量更新成功', 'success')
+        fetchData()
+      } catch (err) {
+        showAlert('更新失败', '批量更新失败', 'error')
+      }
+    })
   }
 
   return (
@@ -545,9 +587,14 @@ export default function Admin() {
                         <tr key={c.id}>
                           <td className="text-gray-400">{c.id}</td>
                           <td>{c.name}</td>
-                          <td>
+                          <td className="space-x-1">
+                            {/* Pro 标签 */}
+                            {c.last_error?.includes('account_type:pro') && (
+                              <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs">⭐ Pro</span>
+                            )}
+                            {/* 模型等级 */}
                             {c.model_tier === '3' ? (
-                              <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs">⭐ 3.0</span>
+                              <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">3.0</span>
                             ) : (
                               <span className="px-2 py-0.5 bg-gray-600/50 text-gray-400 rounded text-xs">2.5</span>
                             )}
@@ -595,37 +642,91 @@ export default function Admin() {
 
             {/* 使用日志 */}
             {tab === 'logs' && (
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>时间</th>
-                      <th>用户</th>
-                      <th>模型</th>
-                      <th>端点</th>
-                      <th>状态</th>
-                      <th>延迟</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map(log => (
-                      <tr key={log.id}>
-                        <td className="text-gray-400 text-sm whitespace-nowrap">
-                          {new Date(log.created_at).toLocaleString()}
-                        </td>
-                        <td>{log.username}</td>
-                        <td className="font-mono text-sm">{log.model}</td>
-                        <td className="text-gray-400 text-sm">{log.endpoint}</td>
-                        <td>
-                          <span className={log.status_code === 200 ? 'text-green-400' : 'text-red-400'}>
-                            {log.status_code}
-                          </span>
-                        </td>
-                        <td className="text-gray-400">{log.latency_ms?.toFixed(0)}ms</td>
+              <div className="space-y-4">
+                {/* 搜索 */}
+                <div className="flex items-center gap-4">
+                  <input
+                    type="text"
+                    placeholder="搜索用户、模型、端点..."
+                    value={logSearch}
+                    onChange={(e) => { setLogSearch(e.target.value); setLogPage(1) }}
+                    className="px-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-gray-500 w-64"
+                  />
+                  <span className="text-gray-400 text-sm">
+                    共 {processedLogs.length} 条
+                    {logSearch && ` (筛选自 ${logs.length} 条)`}
+                  </span>
+                </div>
+
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>时间</th>
+                        <th>用户</th>
+                        <th>模型</th>
+                        <th>端点</th>
+                        <th>状态</th>
+                        <th>延迟</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {paginatedLogs.map(log => (
+                        <tr key={log.id}>
+                          <td className="text-gray-400 text-sm whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td>{log.username}</td>
+                          <td className="font-mono text-sm">{log.model}</td>
+                          <td className="text-gray-400 text-sm">{log.endpoint}</td>
+                          <td>
+                            <span className={log.status_code === 200 ? 'text-green-400' : 'text-red-400'}>
+                              {log.status_code}
+                            </span>
+                          </td>
+                          <td className="text-gray-400">{log.latency_ms?.toFixed(0)}ms</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 分页 */}
+                {totalLogPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <button
+                      onClick={() => setLogPage(1)}
+                      disabled={logPage === 1}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      首页
+                    </button>
+                    <button
+                      onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                      disabled={logPage === 1}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      上一页
+                    </button>
+                    <span className="px-4 py-1 text-gray-400">
+                      第 {logPage} / {totalLogPages} 页
+                    </span>
+                    <button
+                      onClick={() => setLogPage(p => Math.min(totalLogPages, p + 1))}
+                      disabled={logPage === totalLogPages}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      下一页
+                    </button>
+                    <button
+                      onClick={() => setLogPage(totalLogPages)}
+                      disabled={logPage === totalLogPages}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      末页
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -668,6 +769,32 @@ export default function Admin() {
           </>
         )}
       </div>
+
+      {/* 模态框 */}
+      <AlertModal
+        isOpen={alertModal.open}
+        onClose={() => setAlertModal({ ...alertModal, open: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ ...confirmModal, open: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        danger={confirmModal.danger}
+      />
+      <InputModal
+        isOpen={inputModal.open}
+        onClose={() => setInputModal({ ...inputModal, open: false })}
+        onSubmit={inputModal.onSubmit}
+        title={inputModal.title}
+        label={inputModal.label}
+        defaultValue={inputModal.defaultValue}
+        type="number"
+      />
     </div>
   )
 }
