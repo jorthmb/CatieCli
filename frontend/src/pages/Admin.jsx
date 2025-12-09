@@ -549,25 +549,6 @@ export default function Admin() {
             {/* 配额设置 */}
             {tab === 'settings' && (
               <div className="space-y-6">
-                {/* 默认配额设置 */}
-                <div className="card">
-                  <h3 className="font-semibold mb-4">新用户默认配额</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    新注册用户的每日请求配额（次/天）
-                  </p>
-                  <div className="flex gap-3">
-                    <input
-                      type="number"
-                      value={defaultQuota}
-                      onChange={(e) => setDefaultQuota(parseInt(e.target.value) || 0)}
-                      className="w-32 px-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white"
-                    />
-                    <button onClick={updateDefaultQuota} className="btn btn-primary">
-                      保存
-                    </button>
-                  </div>
-                </div>
-
                 {/* 批量设置配额 */}
                 <div className="card">
                   <h3 className="font-semibold mb-4">批量设置所有用户配额</h3>
