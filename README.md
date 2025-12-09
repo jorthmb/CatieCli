@@ -98,6 +98,20 @@ CatieCli/
 
 ## 🚀 部署教程
 
+### 🎯 一键安装（最简单，推荐）
+
+SSH 登录服务器，复制粘贴这一行命令：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/mzrodyu/CatieCli/main/install.sh | bash
+```
+
+自动完成：安装 Docker → 下载代码 → 启动服务
+
+安装完成后会显示访问地址和密码。
+
+---
+
 ### 方式一：1Panel 面板部署（推荐新手）
 
 > 💡 1Panel 是一个开源的 Linux 服务器管理面板，官网：<https://1panel.cn>
