@@ -290,8 +290,10 @@ async def set_default_quota(
     admin: User = Depends(get_current_admin)
 ):
     """设置新用户默认配额"""
-    from app.config import settings
+    from app.config import settings, save_config_to_db
     settings.default_daily_quota = data.quota
+    # 持久化保存到数据库
+    await save_config_to_db("default_daily_quota", data.quota)
     return {"message": "默认配额已更新", "quota": data.quota}
 
 
