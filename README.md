@@ -98,44 +98,99 @@ CatieCli/
 
 ## 🚀 部署教程
 
-### 方式一：1Panel 面板部署（推荐）
+### 方式一：1Panel 面板部署（推荐新手）
 
-#### 1. 下载代码
+> 💡 1Panel 是一个开源的 Linux 服务器管理面板，官网：<https://1panel.cn>
+
+#### 第一步：安装 1Panel（如已安装跳过）
+
+```bash
+curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+```
+
+安装完成后，浏览器访问 `http://你的服务器IP:面板端口` 进入 1Panel。
+
+---
+
+#### 第二步：下载项目代码
+
+1. 在 1Panel 左侧菜单点击 **"终端"**
+2. 输入以下命令并回车：
 
 ```bash
 cd /opt
 git clone https://github.com/mzrodyu/CatieCli.git
 ```
 
-#### 2. 部署后端
+等待下载完成，会看到 `Cloning into 'CatieCli'...` 和 `done` 字样。
 
-在 1Panel → 网站 → 运行环境 → Python → 创建运行环境：
+---
 
-| 配置项   | 值                                                 |
+#### 第三步：创建后端运行环境
+
+1. 在 1Panel 左侧菜单点击 **"网站"** → **"运行环境"**
+2. 点击顶部的 **"Python"** 标签
+3. 点击蓝色按钮 **"创建运行环境"**
+4. 按下表填写：
+
+| 配置项   | 填什么                                             |
 | -------- | -------------------------------------------------- |
 | 名称     | `catiecli`                                         |
-| 项目目录 | `/opt/CatieCli/backend`                            |
+| 项目目录 | 点击文件夹图标，选择 `/opt/CatieCli/backend`       |
 | 启动命令 | `pip install -r requirements.txt && python run.py` |
-| 应用     | Python 3.10+                                       |
+| 应用     | 选择 `Python`，版本选 `3.10` 或更高                |
 | 容器名称 | `catiecli`                                         |
 
-**端口配置：** 添加端口映射 `5001:5001`
+5. 点击下方 **"端口"** 标签，点击 **"添加"**：
+   - 容器端口填：`5001`
+   - 主机端口填：`5001`
+   - 打开 "端口外部访问" 开关
 
-**环境变量：**（点击"环境变量"标签添加）
+6. 点击 **"环境变量"** 标签，点击 **"添加"**，添加以下三个变量：
 
-| 变量名           | 说明                           | 示例               |
-| ---------------- | ------------------------------ | ------------------ |
-| `ADMIN_USERNAME` | 管理员用户名                   | `admin`            |
-| `ADMIN_PASSWORD` | 管理员密码                     | `MySecurePass123`  |
-| `SECRET_KEY`     | JWT 签名密钥（随便敲一串字符） | `a8f3k2m9x7b4c1n6` |
+| 变量名           | 填什么               | 说明                              |
+| ---------------- | -------------------- | --------------------------------- |
+| `ADMIN_USERNAME` | `admin`              | 管理员登录用户名                  |
+| `ADMIN_PASSWORD` | `你想设置的密码`     | 管理员登录密码，如 `MyPass123`    |
+| `SECRET_KEY`     | `随便敲一串字母数字` | 如 `abc123xyz789def456`，16位以上 |
 
-> 💡 **SECRET_KEY 生成方法：** 随便敲一串 16-32 位字母数字，用于加密登录令牌。可用命令生成：`openssl rand -hex 16`
+7. 点击右下角 **"确认"** 按钮
 
-#### 3. 部署 Discord Bot（可选）
+8. 等待状态变成 **"已启动"**（绿色），这可能需要 1-2 分钟
 
-再创建一个运行环境：
+---
 
-| 配置项   | 值                                                 |
+#### 第四步：测试访问
+
+浏览器访问：`http://你的服务器IP:5001`
+
+如果看到登录页面，说明部署成功！🎉
+
+用刚才设置的用户名密码登录。
+
+---
+
+#### 第五步：配置域名访问（可选但推荐）
+
+1. 在 1Panel 左侧点击 **"网站"** → **"网站"**
+2. 点击 **"创建网站"** → 选择 **"反向代理"**
+3. 填写：
+   - 主域名：`你的域名`（如 `api.example.com`）
+   - 代理地址：`http://127.0.0.1:5001`
+4. 点击确认
+5. 如需 HTTPS，点击网站列表中你的域名 → **"HTTPS"** → 申请证书
+
+---
+
+#### 第六步：部署 Discord Bot（可选）
+
+如果你需要 Discord Bot 功能：
+
+1. 去 [Discord Developer Portal](https://discord.com/developers/applications) 创建 Bot，获取 Token
+2. 在 1Panel 再次进入 **"运行环境"** → **"Python"** → **"创建运行环境"**
+3. 填写：
+
+| 配置项   | 填什么                                             |
 | -------- | -------------------------------------------------- |
 | 名称     | `catiecli-bot`                                     |
 | 项目目录 | `/opt/CatieCli/discord-bot`                        |
@@ -143,20 +198,15 @@ git clone https://github.com/mzrodyu/CatieCli.git
 | 应用     | Python 3.10+                                       |
 | 容器名称 | `catiecli-bot`                                     |
 
-**环境变量：**
+4. 添加环境变量：
 
-```
-DISCORD_TOKEN=你的Discord_Bot_Token
-API_BASE_URL=http://catiecli:5001
-API_PUBLIC_URL=https://你的域名
-```
+| 变量名           | 填什么                                     |
+| ---------------- | ------------------------------------------ |
+| `DISCORD_TOKEN`  | 你的 Discord Bot Token                     |
+| `API_BASE_URL`   | `http://catiecli:5001`                     |
+| `API_PUBLIC_URL` | `https://你的域名` 或 `http://你的IP:5001` |
 
-#### 4. 配置反向代理
-
-在 1Panel → 网站 → 反向代理 → 创建：
-
-- 域名：你的域名
-- 代理地址：`http://127.0.0.1:5001`
+5. 点击确认，等待启动
 
 ---
 
