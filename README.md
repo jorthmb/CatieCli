@@ -123,11 +123,13 @@ git clone https://github.com/mzrodyu/CatieCli.git
 
 **环境变量：**（点击"环境变量"标签添加）
 
-```
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=你的管理员密码
-SECRET_KEY=随机字符串
-```
+| 变量名           | 说明                           | 示例               |
+| ---------------- | ------------------------------ | ------------------ |
+| `ADMIN_USERNAME` | 管理员用户名                   | `admin`            |
+| `ADMIN_PASSWORD` | 管理员密码                     | `MySecurePass123`  |
+| `SECRET_KEY`     | JWT 签名密钥（随便敲一串字符） | `a8f3k2m9x7b4c1n6` |
+
+> 💡 **SECRET_KEY 生成方法：** 随便敲一串 16-32 位字母数字，用于加密登录令牌。可用命令生成：`openssl rand -hex 16`
 
 #### 3. 部署 Discord Bot（可选）
 
