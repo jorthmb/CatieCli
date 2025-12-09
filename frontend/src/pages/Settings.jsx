@@ -34,6 +34,7 @@ export default function Settings() {
       const formData = new FormData()
       formData.append('allow_registration', config.allow_registration)
       formData.append('discord_only_registration', config.discord_only_registration)
+      formData.append('discord_oauth_only', config.discord_oauth_only)
       formData.append('default_daily_quota', config.default_daily_quota)
       formData.append('credential_reward_quota', config.credential_reward_quota)
       formData.append('base_rpm', config.base_rpm)
