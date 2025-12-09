@@ -126,7 +126,7 @@ export default function Settings() {
             <p className="text-gray-400 text-sm mb-3">新注册用户的每日请求限制</p>
             <input
               type="number"
-              value={config?.default_daily_quota || 100}
+              value={config?.default_daily_quota ?? 100}
               onChange={(e) => setConfig({ ...config, default_daily_quota: parseInt(e.target.value) || 0 })}
               className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
@@ -138,7 +138,7 @@ export default function Settings() {
             <p className="text-gray-400 text-sm mb-3">用户每捐赠一个凭证到公共池时增加的配额</p>
             <input
               type="number"
-              value={config?.credential_reward_quota || 1000}
+              value={config?.credential_reward_quota ?? 1000}
               onChange={(e) => setConfig({ ...config, credential_reward_quota: parseInt(e.target.value) || 0 })}
               className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
@@ -180,7 +180,7 @@ export default function Settings() {
               <p className="text-gray-400 text-sm mb-3">未贡献凭证用户的每分钟请求数</p>
               <input
                 type="number"
-                value={config?.base_rpm || 5}
+                value={config?.base_rpm ?? 5}
                 onChange={(e) => setConfig({ ...config, base_rpm: parseInt(e.target.value) || 5 })}
                 className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
@@ -191,7 +191,7 @@ export default function Settings() {
               <p className="text-gray-400 text-sm mb-3">贡献凭证用户的每分钟请求数</p>
               <input
                 type="number"
-                value={config?.contributor_rpm || 10}
+                value={config?.contributor_rpm ?? 10}
                 onChange={(e) => setConfig({ ...config, contributor_rpm: parseInt(e.target.value) || 10 })}
                 className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
@@ -207,7 +207,7 @@ export default function Settings() {
               type="number"
               min="0"
               max="10"
-              value={config?.error_retry_count || 3}
+              value={config?.error_retry_count ?? 3}
               onChange={(e) => setConfig({ ...config, error_retry_count: parseInt(e.target.value) || 0 })}
               className="w-32 bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
