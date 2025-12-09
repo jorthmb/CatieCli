@@ -168,6 +168,48 @@ export default function Admin() {
     { id: 'settings', label: '配额设置', icon: Settings },
   ]
 
+  // 用户管理：搜索、排序、翻页
+  const [userSearch, setUserSearch] = useState('')
+  const [userSort, setUserSort] = useState({ field: 'id', order: 'asc' })
+  const [userPage, setUserPage] = useState(1)
+  const usersPerPage = 20
+
+  // 处理用户列表：搜索 -> 排序 -> 分页
+  const processedUsers = (() => {
+    let result = [...users]
+    // 搜索
+    if (userSearch.trim()) {
+      const search = userSearch.toLowerCase()
+      result = result.filter(u => 
+        u.username?.toLowerCase().includes(search) ||
+        u.discord_name?.toLowerCase().includes(search) ||
+        u.discord_id?.includes(search) ||
+        String(u.id).includes(search)
+      )
+    }
+    // 排序
+    result.sort((a, b) => {
+      let aVal = a[userSort.field]
+      let bVal = b[userSort.field]
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+      if (aVal < bVal) return userSort.order === 'asc' ? -1 : 1
+      if (aVal > bVal) return userSort.order === 'asc' ? 1 : -1
+      return 0
+    })
+    return result
+  })()
+
+  const totalUserPages = Math.ceil(processedUsers.length / usersPerPage)
+  const paginatedUsers = processedUsers.slice((userPage - 1) * usersPerPage, userPage * usersPerPage)
+
+  const handleUserSort = (field) => {
+    setUserSort(prev => ({
+      field,
+      order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc'
+    }))
+  }
+
   // 配额设置相关
   const [defaultQuota, setDefaultQuota] = useState(100)
   const [batchQuota, setBatchQuota] = useState('')
@@ -293,22 +335,50 @@ export default function Admin() {
 
             {/* 用户管理 */}
             {tab === 'users' && (
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>用户名</th>
-                      <th>Discord</th>
-                      <th>配额</th>
-                      <th>今日使用</th>
-                      <th>凭证数</th>
-                      <th>状态</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(u => (
+              <div className="space-y-4">
+                {/* 搜索和统计 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="text"
+                      placeholder="搜索用户名、Discord..."
+                      value={userSearch}
+                      onChange={(e) => { setUserSearch(e.target.value); setUserPage(1) }}
+                      className="px-4 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-gray-500 w-64"
+                    />
+                    <span className="text-gray-400 text-sm">
+                      共 {processedUsers.length} 个用户
+                      {userSearch && ` (筛选自 ${users.length} 个)`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th className="cursor-pointer hover:text-purple-400" onClick={() => handleUserSort('id')}>
+                          ID {userSort.field === 'id' && (userSort.order === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="cursor-pointer hover:text-purple-400" onClick={() => handleUserSort('username')}>
+                          用户名 {userSort.field === 'username' && (userSort.order === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th>Discord</th>
+                        <th className="cursor-pointer hover:text-purple-400" onClick={() => handleUserSort('daily_quota')}>
+                          配额 {userSort.field === 'daily_quota' && (userSort.order === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="cursor-pointer hover:text-purple-400" onClick={() => handleUserSort('today_usage')}>
+                          今日使用 {userSort.field === 'today_usage' && (userSort.order === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th className="cursor-pointer hover:text-purple-400" onClick={() => handleUserSort('credential_count')}>
+                          凭证数 {userSort.field === 'credential_count' && (userSort.order === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th>状态</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedUsers.map(u => (
                       <tr key={u.id}>
                         <td className="text-gray-400">{u.id}</td>
                         <td>
@@ -370,6 +440,44 @@ export default function Admin() {
                     ))}
                   </tbody>
                 </table>
+                </div>
+
+                {/* 分页 */}
+                {totalUserPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <button
+                      onClick={() => setUserPage(1)}
+                      disabled={userPage === 1}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      首页
+                    </button>
+                    <button
+                      onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                      disabled={userPage === 1}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      上一页
+                    </button>
+                    <span className="px-4 py-1 text-gray-400">
+                      第 {userPage} / {totalUserPages} 页
+                    </span>
+                    <button
+                      onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                      disabled={userPage === totalUserPages}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      下一页
+                    </button>
+                    <button
+                      onClick={() => setUserPage(totalUserPages)}
+                      disabled={userPage === totalUserPages}
+                      className="px-3 py-1 bg-dark-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      末页
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
