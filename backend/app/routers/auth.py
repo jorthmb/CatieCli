@@ -444,6 +444,15 @@ async def update_my_credential(
             # 检查是否有认证错误（403等）
             if cred.last_error and ('403' in cred.last_error or '401' in cred.last_error or '认证' in cred.last_error or '无效' in cred.last_error):
                 raise HTTPException(status_code=400, detail="凭证存在认证错误，不能捐赠")
+            # 捐赠奖励配额（只有从私有变公开才奖励）
+            if not cred.is_public:
+                user.daily_quota += settings.credential_reward_quota
+                print(f"[凭证捐赠] 用户 {user.username} 获得 {settings.credential_reward_quota} 额度奖励", flush=True)
+        else:
+            # 取消捐赠扣除配额
+            if cred.is_public:
+                user.daily_quota = max(settings.default_daily_quota, user.daily_quota - settings.credential_reward_quota)
+                print(f"[取消捐赠] 用户 {user.username} 扣除 {settings.credential_reward_quota} 额度", flush=True)
         cred.is_public = is_public
     if is_active is not None:
         # 手动启用时清除错误（但不清除403错误记录）
@@ -466,6 +475,11 @@ async def delete_my_credential(
     cred = result.scalar_one_or_none()
     if not cred:
         raise HTTPException(status_code=404, detail="凭证不存在")
+    
+    # 如果是公开凭证，删除时扣除配额
+    if cred.is_public:
+        user.daily_quota = max(settings.default_daily_quota, user.daily_quota - settings.credential_reward_quota)
+        print(f"[删除凭证] 用户 {user.username} 扣除 {settings.credential_reward_quota} 额度", flush=True)
     
     await db.delete(cred)
     await db.commit()
