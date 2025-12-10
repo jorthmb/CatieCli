@@ -51,11 +51,36 @@ GET /models
 
 ### 使用示例
 
+> ⚠️ **重要提示：示例中的占位符必须替换成你自己的值！**
+>
+> | 占位符 | 需要替换成 | 在哪获取 |
+> |--------|-----------|---------|
+> | `http://localhost:5001` | 你的服务器地址 | 部署时确定（如 `https://api.你的域名.com`） |
+> | `cat-your-api-key` | 你的 API Key | 登录后台 → 仪表盘 → 复制 API Key |
+
 **OpenAI 格式：**
 
 ```bash
-curl http://localhost:5001/v1/chat/completions \
-  -H "Authorization: Bearer cat-your-api-key" \
+# ❌ 错误示例（直接复制不会工作）
+curl http://localhost:5001/v1/chat/completions ...
+
+# ✅ 正确示例（替换成你自己的值）
+curl https://你部署的域名或IP:端口/v1/chat/completions \
+  -H "Authorization: Bearer cat-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-2.5-flash",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+**真实请求示例：**
+
+假设你的服务部署在 `https://api.example.com`，API Key 是 `cat-abc123`：
+
+```bash
+curl https://api.example.com/v1/chat/completions \
+  -H "Authorization: Bearer cat-abc123" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gemini-2.5-flash",
@@ -66,8 +91,8 @@ curl http://localhost:5001/v1/chat/completions \
 **Gemini 格式：**
 
 ```bash
-curl http://localhost:5001/v1beta/models/gemini-2.5-flash:generateContent \
-  -H "Authorization: Bearer cat-your-api-key" \
+curl https://你的地址/v1beta/models/gemini-2.5-flash:generateContent \
+  -H "Authorization: Bearer 你的API-Key" \
   -H "Content-Type: application/json" \
   -d '{
     "contents": [{"parts": [{"text": "Hello!"}]}]
@@ -201,16 +226,26 @@ git clone https://github.com/mzrodyu/CatieCli.git
 
 **3.6** 配置环境变量（设置你的管理员账号密码）
 
+> ⚠️ **注意：下面的值只是示例！你必须改成自己的！**
+
 - 点击 **"环境变量"** 标签
-- 点击 **"添加"** 按钮，添加第一个变量：
-  - 左边输入：`ADMIN_USERNAME`
-  - 右边输入：`admin`（这是你的登录用户名）
-- 再点 **"添加"**，添加第二个变量：
-  - 左边输入：`ADMIN_PASSWORD`
-  - 右边输入：`你的密码`（比如 `MyPass123`，记住它！）
-- 再点 **"添加"**，添加第三个变量：
-  - 左边输入：`SECRET_KEY`
-  - 右边输入：随便敲一串字母数字（比如 `aabbcc112233ddeeff`）
+- 点击 **"添加"** 按钮，添加以下变量：
+
+| 变量名（左边输入） | 值（右边输入）         | 说明                                  |
+| ------------------ | ---------------------- | ------------------------------------- |
+| `ADMIN_USERNAME`   | `admin`                | 管理员用户名，可以改成你喜欢的        |
+| `ADMIN_PASSWORD`   | **改成你自己的密码！** | ❌ 不要用 `admin123`！换个强密码       |
+| `SECRET_KEY`       | **随便敲一串字母数字** | 比如 `abc123xyz789def456`，越长越安全 |
+
+**示例（仅供参考，请修改！）：**
+
+```
+ADMIN_USERNAME=myadmin
+ADMIN_PASSWORD=MySecurePassword2024!
+SECRET_KEY=j8k2m5n7p9q1r3s6t8v0w2x4y6z8a1b3
+```
+
+> 🔒 **密码建议**：至少 8 位，包含大小写字母和数字，如 `CatMeow2024!`
 
 **3.7** 全部填好后，点击右下角的 **"确认"** 按钮
 
@@ -263,11 +298,31 @@ git clone https://github.com/mzrodyu/CatieCli.git
 
 4. 添加环境变量：
 
-| 变量名           | 填什么                                     |
-| ---------------- | ------------------------------------------ |
-| `DISCORD_TOKEN`  | 你的 Discord Bot Token                     |
-| `API_BASE_URL`   | `http://catiecli:5001`                     |
-| `API_PUBLIC_URL` | `https://你的域名` 或 `http://你的IP:5001` |
+> ⚠️ **这些值必须根据你的实际情况填写！**
+
+| 变量名           | 说明                                    | 示例值（需修改！）                                 |
+| ---------------- | --------------------------------------- | -------------------------------------------------- |
+| `DISCORD_TOKEN`  | 你在 Discord 开发者后台获取的 Bot Token | `MTIzNDU2Nzg5...`（很长一串）                      |
+| `API_BASE_URL`   | 后端内部地址（容器内访问）              | `http://catiecli:5001`（这个一般不用改）           |
+| `API_PUBLIC_URL` | 用户实际访问的地址                      | `https://api.example.com` 或 `http://1.2.3.4:5001` |
+
+**示例配置：**
+
+假设你的域名是 `api.mysite.com`：
+
+```text
+DISCORD_TOKEN=MTIzNDU2Nzg5MDEyMzQ1Njc4OQ.XXXXXX.YYYYYYYYYYYYYYYYYYYYYYYY
+API_BASE_URL=http://catiecli:5001
+API_PUBLIC_URL=https://api.mysite.com
+```
+
+假设你用 IP 访问，IP 是 `123.45.67.89`：
+
+```text
+DISCORD_TOKEN=MTIzNDU2Nzg5MDEyMzQ1Njc4OQ.XXXXXX.YYYYYYYYYYYYYYYYYYYYYYYY
+API_BASE_URL=http://catiecli:5001
+API_PUBLIC_URL=http://123.45.67.89:5001
+```
 
 5. 点击确认，等待启动
 
@@ -436,24 +491,38 @@ PORT=8080
 
 ### 后端配置 (.env)
 
-```env
-# 数据库
-DATABASE_URL=sqlite+aiosqlite:///./data/gemini_proxy.db
+> ⚠️ **重要：带有 `改成xxx` 或 `your-xxx` 的值都必须替换！**
 
-# JWT 密钥（请更改！）
-SECRET_KEY=your-super-secret-key
+```env
+# ========================
+# 必须配置（不改会有安全风险）
+# ========================
+
+# JWT 密钥 - 用于加密 Token，必须是随机字符串！
+# ❌ 错误：SECRET_KEY=your-super-secret-key
+# ✅ 正确：SECRET_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6（随便敲）
+SECRET_KEY=改成随机字符串别用这个
 
 # 管理员账号
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your_admin_password
+# ❌ 错误：ADMIN_PASSWORD=admin123（太简单）
+# ✅ 正确：ADMIN_PASSWORD=MySecure@Pass2024
+ADMIN_PASSWORD=改成你的强密码
 
-# 服务端口（可选，默认 5001，使用域名反代可不配置）
+# ========================
+# 可选配置（有默认值）
+# ========================
+
+# 数据库（一般不用改）
+DATABASE_URL=sqlite+aiosqlite:///./data/gemini_proxy.db
+
+# 服务端口（使用域名反代可不配置）
 # PORT=5001
 
-# 默认用户配额
+# 默认用户每日配额
 DEFAULT_DAILY_QUOTA=100
 
-# 注册开关
+# 是否允许注册
 ALLOW_REGISTRATION=true
 
 # Google OAuth（已内置默认凭据，无需配置）
@@ -468,6 +537,17 @@ ALLOW_REGISTRATION=true
 # DISCORD_REDIRECT_URI=https://你的域名/api/auth/discord/callback
 ```
 
+**完整示例（可直接复制修改）：**
+
+```env
+SECRET_KEY=j8k2m5n7p9q1r3s6t8v0w2x4y6z8a1b3
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=MySecurePassword2024!
+DATABASE_URL=sqlite+aiosqlite:///./data/gemini_proxy.db
+DEFAULT_DAILY_QUOTA=100
+ALLOW_REGISTRATION=true
+```
+
 ### Discord OAuth 登录配置（可选）
 
 如果需要用户通过 **Discord 账号登录/注册**（不是 Bot），需要配置：
@@ -478,13 +558,17 @@ ALLOW_REGISTRATION=true
 2. 点击 **"New Application"** 创建应用
 3. 进入应用后，点击左侧 **"OAuth2"**
 4. 在 **"Redirects"** 部分添加回调地址：
+
    ```
    https://你的域名/api/auth/discord/callback
    ```
+
    如果没有域名，使用 IP+端口：
+
    ```
    http://你的IP:5001/api/auth/discord/callback
    ```
+
 5. 复制 **Client ID** 和 **Client Secret**（点击 Reset Secret 生成）
 
 #### 第二步：配置环境变量
