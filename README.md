@@ -118,7 +118,7 @@ CatieCli/
 
 ### ☁️ Zeabur 一键部署（最简单）
 
-[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/54DBZN)
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/NWD8X9)
 
 点击按钮 → 登录 Zeabur → 设置管理员密码 → 完成！
 
