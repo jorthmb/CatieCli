@@ -99,9 +99,10 @@ curl https://你的地址/v1beta/models/gemini-2.5-flash:generateContent \
   }'
 ```
 
-## 📁 项目结构
+<details>
+<summary><strong>📁 项目结构</strong>（点击展开）</summary>
 
-```
+```text
 CatieCli/
 ├── backend/          # FastAPI 后端
 │   ├── app/
@@ -120,6 +121,8 @@ CatieCli/
     ├── bot.py
     └── requirements.txt
 ```
+
+</details>
 
 ## 🚀 部署教程
 
@@ -149,7 +152,8 @@ docker run -d -p 5001:5001 -v catiecli-data:/app/data --name catiecli ghcr.io/mz
 
 ---
 
-### 方式一：1Panel 面板部署（推荐新手）
+<details>
+<summary><strong>📦 方式一：1Panel 面板部署（推荐新手）</strong>（点击展开详细步骤）</summary>
 
 > 💡 1Panel 是一个开源的 Linux 服务器管理面板，官网：<https://1panel.cn>
 
@@ -161,108 +165,45 @@ curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_
 
 安装完成后，浏览器访问 `http://你的服务器IP:面板端口` 进入 1Panel。
 
----
-
 #### 第二步：下载项目代码
 
-1. 在 1Panel 左侧菜单点击 **"终端"**
-2. 输入以下命令并回车：
+在 1Panel 左侧菜单点击 **"终端"**，输入以下命令：
 
 ```bash
 cd /opt
 git clone https://github.com/mzrodyu/CatieCli.git
 ```
 
-等待下载完成，会看到 `Cloning into 'CatieCli'...` 和 `done` 字样。
-
----
-
 #### 第三步：创建后端运行环境
 
-**3.1** 在 1Panel 左侧菜单，找到 **"网站"**，点一下
+1. 1Panel 左侧 **"网站"** → **"Python"** → **"创建运行环境"**
+2. 填写表单：
 
-**3.2** 页面上方会出现几个标签：`PHP` `Java` `Node.js` `Go` `Python`，点击 **"Python"**
+| 配置项   | 填什么                                             |
+| -------- | -------------------------------------------------- |
+| 名称     | `catiecli`（随便起）                               |
+| 项目目录 | `/opt/CatieCli/backend`（点文件夹图标选择）        |
+| 启动命令 | `pip install -r requirements.txt && python run.py` |
+| 应用     | Python 3.10+                                       |
+| 容器名称 | `catiecli`                                         |
 
-**3.3** 点击蓝色按钮 **"创建运行环境"**，会弹出一个表单
+3. 配置环境变量（**必须修改默认值！**）：
 
-**3.4** 开始填写表单：
+| 变量名           | 值（改成你的！）                    |
+| ---------------- | ----------------------------------- |
+| `ADMIN_USERNAME` | `admin`（或自定义用户名）           |
+| `ADMIN_PASSWORD` | **你的强密码**（❌ 不要用 admin123） |
+| `SECRET_KEY`     | **随机字符串**（如 `abc123xyz789`） |
 
-- **名称**：随便起个名字，比如 `catiecli`、`gemini-api`、`myapi` 都行
-- **项目目录**：点击输入框右边的 📁 文件夹图标，在弹出的窗口里依次点击：
-  - 点击 `opt` 文件夹
-  - 点击 `CatieCli` 文件夹  
-  - 点击 `backend` 文件夹
-  - 点击右下角 **"选择"** 按钮
-- **启动命令**：复制粘贴这一整行：
+4. 如果用 IP+端口 访问，添加端口映射 `5001:5001` 并开放防火墙
 
-  ```bash
-  pip install -r requirements.txt && python run.py
-  ```
-
-- **应用**：第一个下拉框选 `Python`，第二个下拉框选 `3.10` 或 `3.11` 或 `3.12`（选最新的就行）
-- **容器名称**：输入 `catiecli`
-
-**3.5** 配置端口（根据访问方式选择）
-
-> 💡 **二选一**：如果你打算用纯域名访问（推荐），可以跳过端口配置，直接看第五步配置反向代理。
-
-**如果你想用 IP+端口 访问**（如 `http://1.2.3.4:5001`）：
-
-- 点击表单下方的 **"端口"** 标签
-- 点击 **"添加"** 按钮
-- 第一个输入框（容器端口）填：`5001`（可自定义，比如 `8080`）
-- 第二个输入框（主机端口）填：`5001`（和上面一样）
-- 把 **"端口外部访问"** 的开关打开（变成蓝色）
-- 还需要配置防火墙：
-  - 1Panel 左侧 **"主机"** → **"防火墙"** → **"创建规则"**
-  - 协议 `TCP`，端口 `5001`，策略 `放行`
-  - ⚠️ 云服务器还需在控制台"安全组"放行此端口
-
-**如果你想用纯域名访问**（推荐，如 `https://cat.example.com`）：
-
-- **端口不用配置！** 跳过这一步
-- 后面第五步配置反向代理后，直接用域名访问
-- 不带端口号，更安全更专业
-
-**3.6** 配置环境变量（设置你的管理员账号密码）
-
-> ⚠️ **注意：下面的值只是示例！你必须改成自己的！**
-
-- 点击 **"环境变量"** 标签
-- 点击 **"添加"** 按钮，添加以下变量：
-
-| 变量名（左边输入） | 值（右边输入）         | 说明                                  |
-| ------------------ | ---------------------- | ------------------------------------- |
-| `ADMIN_USERNAME`   | `admin`                | 管理员用户名，可以改成你喜欢的        |
-| `ADMIN_PASSWORD`   | **改成你自己的密码！** | ❌ 不要用 `admin123`！换个强密码       |
-| `SECRET_KEY`       | **随便敲一串字母数字** | 比如 `abc123xyz789def456`，越长越安全 |
-
-**示例（仅供参考，请修改！）：**
-
-```
-ADMIN_USERNAME=myadmin
-ADMIN_PASSWORD=MySecurePassword2024!
-SECRET_KEY=j8k2m5n7p9q1r3s6t8v0w2x4y6z8a1b3
-```
-
-> 🔒 **密码建议**：至少 8 位，包含大小写字母和数字，如 `CatMeow2024!`
-
-**3.7** 全部填好后，点击右下角的 **"确认"** 按钮
-
-**3.8** 等待启动
-
-- 页面会回到列表，你会看到刚创建的 `catiecli`
-- 状态可能显示"启动中"（黄色）或"构建中"
-- 等 1-3 分钟，刷新页面，直到状态变成 **"已启动"**（绿色）
-- 如果显示红色"失败"，点击名称查看日志排查问题
-
----
+5. 点击确认，等待启动完成（状态变绿）
 
 #### 第四步：测试访问
 
 浏览器访问：`http://你的服务器IP:5001`
 
-如果看到登录页面，说明部署成功！🎉
+看到登录页面就成功了！🎉
 
 用刚才设置的用户名密码登录。
 
@@ -326,9 +267,10 @@ API_PUBLIC_URL=http://123.45.67.89:5001
 
 5. 点击确认，等待启动
 
----
+</details>
 
-### 方式二：命令行部署
+<details>
+<summary><strong>💻 方式二：命令行部署</strong>（点击展开）</summary>
 
 #### 后端
 
@@ -362,9 +304,10 @@ export API_PUBLIC_URL=https://your-domain.com
 python bot.py
 ```
 
----
+</details>
 
-### 方式三：Docker Compose 部署（最简单）
+<details>
+<summary><strong>🐳 方式三：Docker Compose 部署</strong>（点击展开）</summary>
 
 ```bash
 # 1. 克隆代码
@@ -374,8 +317,8 @@ cd CatieCli
 # 2. 创建配置文件
 cp .env.example .env
 
-# 3. 修改配置
-nano .env  # 修改 ADMIN_PASSWORD 和 SECRET_KEY
+# 3. 修改配置（必须改 ADMIN_PASSWORD 和 SECRET_KEY！）
+nano .env
 
 # 4. 一键启动
 docker-compose up -d
@@ -386,50 +329,35 @@ docker-compose logs -f
 
 访问 `http://你的IP:5001` 即可
 
-#### 启用 Discord Bot
+**启用 Discord Bot**：编辑 `docker-compose.yml`，取消 bot 服务的注释，填入 Token 后重启。
 
-编辑 `docker-compose.yml`，取消 bot 服务的注释，填入 Token：
+</details>
 
-```yaml
-bot:
-  build: ./discord-bot
-  environment:
-    - DISCORD_TOKEN=你的Token
-    - API_BASE_URL=http://backend:5001
-    - API_PUBLIC_URL=https://你的域名
-```
+<details>
+<summary><strong>🔄 更新升级</strong>（点击展开）</summary>
 
-然后 `docker-compose up -d` 重新启动
-
----
-
-## 🔄 更新升级
-
-### Docker Compose 部署
+**Docker Compose**：
 
 ```bash
-cd /你的安装目录
-git pull
-docker-compose up -d --build
+cd /你的安装目录 && git pull && docker-compose up -d --build
 ```
 
-### 1Panel 部署
+**1Panel**：
 
 ```bash
-cd /opt/CatieCli  # 或你的项目目录
-git pull
+cd /opt/CatieCli && git pull
 # 然后在 1Panel 面板重启运行环境
 ```
 
-### 一键脚本安装的
+**一键脚本**：
 
 ```bash
-cd /opt/catiecli
-git pull
-docker-compose up -d --build
+cd /opt/catiecli && git pull && docker-compose up -d --build
 ```
 
----
+> ⚠️ 更新后请清除浏览器缓存！按 `Ctrl+Shift+R` 强制刷新。
+
+</details>
 
 ## ⚠️ 注意事项
 
@@ -487,7 +415,8 @@ PORT=8080
 
 同时端口映射也改成 `8080:8080`
 
-## ⚙️ 配置说明
+<details>
+<summary><strong>⚙️ 配置说明</strong>（点击展开详细配置）</summary>
 
 ### 后端配置 (.env)
 
@@ -598,7 +527,12 @@ DISCORD_REDIRECT_URI=https://你的域名/api/auth/discord/callback
 | `API_PUBLIC_URL` | 后端 API 地址（显示给用户） |
 | `ADMIN_ROLE_ID`  | 管理员角色 ID（可选）       |
 
-## 📡 API 使用
+</details>
+
+<details>
+<summary><strong>📡 API 使用 & Discord Bot 命令</strong>（点击展开）</summary>
+
+## API 使用
 
 ### OpenAI 兼容接口
 
@@ -642,7 +576,12 @@ curl https://your-domain.com/v1/chat/completions \
 | `/donate`   | 贡献凭证获取 OAuth 链接 |
 | `/callback` | 提交 OAuth 回调 URL     |
 
-## 🐳 Docker 部署
+</details>
+
+<details>
+<summary><strong>🐳 Docker 单独部署</strong>（点击展开）</summary>
+
+## Docker 部署
 
 ### 后端
 
@@ -660,7 +599,12 @@ docker build -t catiecli-bot .
 docker run -d --env-file .env catiecli-bot
 ```
 
-## 🔄 更新指南
+</details>
+
+<details>
+<summary><strong>🔄 详细更新指南</strong>（点击展开）</summary>
+
+## 更新指南
 
 当有新版本发布时，按以下步骤更新你的部署。
 
@@ -759,9 +703,10 @@ chmod +x /opt/CatieCli/update.sh
 /opt/CatieCli/update.sh
 ```
 
----
+</details>
 
-## ❓ 常见问题
+<details>
+<summary><strong>❓ 常见问题 FAQ</strong>（点击展开）</summary>
 
 ### Q: 页面报错 `xxx is not defined` 或页面空白
 
@@ -839,7 +784,7 @@ docker-compose up -d --build
 
 重启后会自动创建新的数据库和默认管理员账号。
 
----
+</details>
 
 ## 📄 开源协议
 
