@@ -59,7 +59,8 @@ GET /models
 
 </details>
 
-### 使用示例
+<details>
+<summary><strong>📝 使用示例</strong>（点击展开）</summary>
 
 > ⚠️ **重要提示：示例中的占位符必须替换成你自己的值！**
 >
@@ -71,31 +72,10 @@ GET /models
 **OpenAI 格式：**
 
 ```bash
-# ❌ 错误示例（直接复制不会工作）
-curl http://localhost:5001/v1/chat/completions ...
-
-# ✅ 正确示例（替换成你自己的值）
 curl https://你部署的域名或IP:端口/v1/chat/completions \
-  -H "Authorization: Bearer cat-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+  -H "Authorization: Bearer cat-你的API密钥" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "gemini-2.5-flash",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
-
-**真实请求示例：**
-
-假设你的服务部署在 `https://api.example.com`，API Key 是 `cat-abc123`：
-
-```bash
-curl https://api.example.com/v1/chat/completions \
-  -H "Authorization: Bearer cat-abc123" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gemini-2.5-flash",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
+  -d '{"model": "gemini-2.5-flash", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
 **Gemini 格式：**
@@ -104,10 +84,10 @@ curl https://api.example.com/v1/chat/completions \
 curl https://你的地址/v1beta/models/gemini-2.5-flash:generateContent \
   -H "Authorization: Bearer 你的API-Key" \
   -H "Content-Type: application/json" \
-  -d '{
-    "contents": [{"parts": [{"text": "Hello!"}]}]
-  }'
+  -d '{"contents": [{"parts": [{"text": "Hello!"}]}]}'
 ```
+
+</details>
 
 <details>
 <summary><strong>📁 项目结构</strong>（点击展开）</summary>
