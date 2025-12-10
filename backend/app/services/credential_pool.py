@@ -302,22 +302,21 @@ class CredentialPool:
         """
         检测账号类型（Pro/Free）
         
-        使用 Google Drive API 检测存储空间：
-        - Pro 账号: 2TB (2199023255552 bytes)
-        - 普通账号: 15GB (16106127360 bytes)
+        方式1: 使用 Google Drive API 检测存储空间（需要 drive scope）
+        方式2: 如果 Drive API 失败，回退到连续请求检测
         
         Returns:
             {"account_type": "pro"/"free"/"unknown", "storage_gb": float}
         """
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-        }
+        import asyncio
         
-        print(f"[检测账号] 使用 Drive API 检测存储空间...", flush=True)
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        print(f"[检测账号] 尝试使用 Drive API 检测存储空间...", flush=True)
         
         async with httpx.AsyncClient(timeout=15.0) as client:
+            # 方式1: 尝试 Drive API
             try:
-                # 获取 Drive 存储配额
                 resp = await client.get(
                     "https://www.googleapis.com/drive/v3/about?fields=storageQuota",
                     headers=headers
@@ -327,19 +326,49 @@ class CredentialPool:
                     data = resp.json()
                     quota = data.get("storageQuota", {})
                     limit = int(quota.get("limit", 0))
-                    storage_gb = round(limit / (1024**3), 1)
                     
-                    print(f"[检测账号] 存储空间: {storage_gb} GB", flush=True)
-                    
-                    # 2TB = 2048GB，Pro 账号
-                    if storage_gb >= 100:  # 100GB 以上认为是 Pro
-                        return {"account_type": "pro", "storage_gb": storage_gb}
-                    else:
-                        return {"account_type": "free", "storage_gb": storage_gb}
-                else:
-                    print(f"[检测账号] Drive API 错误: {resp.status_code}", flush=True)
-                    return {"account_type": "unknown", "error": f"Drive API 错误 ({resp.status_code})"}
-                    
+                    if limit > 0:
+                        storage_gb = round(limit / (1024**3), 1)
+                        print(f"[检测账号] 存储空间: {storage_gb} GB", flush=True)
+                        
+                        if storage_gb >= 100:
+                            return {"account_type": "pro", "storage_gb": storage_gb}
+                        else:
+                            return {"account_type": "free", "storage_gb": storage_gb}
+                            
             except Exception as e:
-                print(f"[检测账号] 请求异常: {e}", flush=True)
-                return {"account_type": "unknown", "error": str(e)}
+                print(f"[检测账号] Drive API 异常: {e}", flush=True)
+            
+            # 方式2: 回退到连续请求检测
+            print(f"[检测账号] Drive API 无权限，使用连续请求检测...", flush=True)
+            
+            headers["Content-Type"] = "application/json"
+            url = "https://cloudcode-pa.googleapis.com/v1internal:generateContent"
+            payload = {
+                "model": "gemini-2.0-flash",
+                "project": project_id,
+                "request": {
+                    "contents": [{"role": "user", "parts": [{"text": "1"}]}],
+                    "generationConfig": {"maxOutputTokens": 1}
+                }
+            }
+            
+            for i in range(5):
+                try:
+                    resp = await client.post(url, headers=headers, json=payload)
+                    print(f"[检测账号] 第 {i+1} 次请求: {resp.status_code}", flush=True)
+                    
+                    if resp.status_code == 429:
+                        error_text = resp.text.lower()
+                        if "per day" not in error_text and "daily" not in error_text:
+                            return {"account_type": "free"}
+                        return {"account_type": "unknown", "error": "配额已用尽"}
+                    elif resp.status_code not in [200]:
+                        return {"account_type": "unknown"}
+                        
+                except Exception as e:
+                    return {"account_type": "unknown", "error": str(e)}
+                
+                await asyncio.sleep(0.5)
+            
+            return {"account_type": "pro"}
