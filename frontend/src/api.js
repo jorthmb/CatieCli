@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "",
-  timeout: 30000,
+  timeout: 120000, // 2分钟，一键检测需要更长时间
 });
 
 // 请求拦截器 - 添加token
