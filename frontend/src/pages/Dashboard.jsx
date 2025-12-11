@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [oauthMessage, setOauthMessage] = useState(null)
   const [copied, setCopied] = useState(false)
   const [stats, setStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
   
   // API Key 相关
   const [showKeyModal, setShowKeyModal] = useState(false)
@@ -92,13 +93,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     // 并行加载数据以提升性能
+    setStatsLoading(true)
     Promise.all([
       api.get('/api/auth/me').catch(() => null),
-      api.get('/api/auth/stats').catch(() => null)
+      api.get('/api/public/stats').catch(() => null)
     ]).then(([meRes, statsRes]) => {
       if (meRes?.data) setUserInfo(meRes.data)
       if (statsRes?.data) setStats(statsRes.data)
-    })
+    }).finally(() => setStatsLoading(false))
   }, [])
 
   const copyToClipboard = async (text) => {
@@ -435,27 +437,34 @@ export default function Dashboard() {
             {user?.is_admin && (
               <>
                 <h3 className="text-lg font-semibold mb-3">全站统计</h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-dark-800 border border-dark-600 rounded-xl p-4 text-center">
-                    <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                    <div className="text-xl font-bold">{stats?.user_count || '-'}</div>
-                    <div className="text-gray-400 text-sm">注册用户</div>
+                {statsLoading ? (
+                  <div className="text-center py-4 text-gray-400">
+                    <div className="animate-spin w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    加载中...
                   </div>
-                  <div className="bg-dark-800 border border-dark-600 rounded-xl p-4 text-center">
-                    <Zap className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                    <div className="text-xl font-bold">{stats?.active_credentials || '-'}</div>
-                    <div className="text-gray-400 text-sm">可用凭证</div>
-                  </div>
-                  <div className="bg-dark-800 border border-dark-600 rounded-xl p-4 text-center">
-                    <Activity className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                    <div className="text-xl font-bold">
-                      <span className="text-green-400">{stats?.today_success || 0}</span>
-                      <span className="text-gray-500 mx-1">/</span>
-                      <span className="text-red-400">{stats?.today_failed || 0}</span>
+                ) : (
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="bg-dark-800 border border-dark-600 rounded-xl p-4 text-center">
+                      <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                      <div className="text-xl font-bold">{stats?.user_count || '-'}</div>
+                      <div className="text-gray-400 text-sm">注册用户</div>
                     </div>
-                    <div className="text-gray-400 text-sm">成功/失败</div>
+                    <div className="bg-dark-800 border border-dark-600 rounded-xl p-4 text-center">
+                      <Zap className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+                      <div className="text-xl font-bold">{stats?.active_credentials || '-'}</div>
+                      <div className="text-gray-400 text-sm">可用凭证</div>
+                    </div>
+                    <div className="bg-dark-800 border border-dark-600 rounded-xl p-4 text-center">
+                      <Activity className="w-6 h-6 text-green-400 mx-auto mb-2" />
+                      <div className="text-xl font-bold">
+                        <span className="text-green-400">{stats?.today_success || 0}</span>
+                        <span className="text-gray-500 mx-1">/</span>
+                        <span className="text-red-400">{stats?.today_failed || 0}</span>
+                      </div>
+                      <div className="text-gray-400 text-sm">成功/失败</div>
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             )}
           </>
