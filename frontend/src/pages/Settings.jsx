@@ -37,6 +37,9 @@ export default function Settings() {
       formData.append('discord_oauth_only', config.discord_oauth_only)
       formData.append('default_daily_quota', config.default_daily_quota)
       formData.append('no_credential_quota', config.no_credential_quota || 0)
+      formData.append('no_cred_quota_flash', config.no_cred_quota_flash ?? 100)
+      formData.append('no_cred_quota_25pro', config.no_cred_quota_25pro ?? 50)
+      formData.append('no_cred_quota_30pro', config.no_cred_quota_30pro ?? 0)
       formData.append('credential_reward_quota', config.credential_reward_quota)
       formData.append('quota_flash', config.quota_flash || 1000)
       formData.append('quota_25pro', config.quota_25pro || 500)
@@ -171,6 +174,44 @@ export default function Settings() {
                 ⚠️ 当前设置：无凭证用户最多 {config.no_credential_quota} 次/天
               </p>
             )}
+          </div>
+
+          {/* 无凭证用户按模型配额 */}
+          <div>
+            <h3 className="font-semibold mb-2">无凭证用户按模型配额 🔒</h3>
+            <p className="text-gray-400 text-sm mb-3">无凭证用户各类模型的每日配额（0 = 禁止使用该类模型）</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Flash 配额</label>
+                <input
+                  type="number"
+                  value={config?.no_cred_quota_flash ?? ''}
+                  onChange={(e) => setConfig({ ...config, no_cred_quota_flash: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">2.5 Pro 配额</label>
+                <input
+                  type="number"
+                  value={config?.no_cred_quota_25pro ?? ''}
+                  onChange={(e) => setConfig({ ...config, no_cred_quota_25pro: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">3.0 配额</label>
+                <input
+                  type="number"
+                  value={config?.no_cred_quota_30pro ?? ''}
+                  onChange={(e) => setConfig({ ...config, no_cred_quota_30pro: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                  className="w-full bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+            </div>
+            <p className="text-gray-500 text-sm mt-2">
+              💡 设为 0 表示禁止无凭证用户使用该类模型
+            </p>
           </div>
 
           {/* 凭证奖励 - 按模型分类 */}
