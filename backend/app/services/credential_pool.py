@@ -191,6 +191,16 @@ class CredentialPool:
             print(f"[Token刷新] refresh_token 解密失败", flush=True)
             return None
         
+        # 优先使用凭证自己的 client_id/secret，否则使用系统配置
+        if credential.client_id and credential.client_secret:
+            client_id = decrypt_credential(credential.client_id)
+            client_secret = decrypt_credential(credential.client_secret)
+            print(f"[Token刷新] 使用凭证自己的 client_id: {client_id[:20]}...", flush=True)
+        else:
+            client_id = settings.google_client_id
+            client_secret = settings.google_client_secret
+            print(f"[Token刷新] 使用系统配置的 client_id", flush=True)
+        
         print(f"[Token刷新] 开始刷新 token, refresh_token 前20字符: {refresh_token[:20]}...", flush=True)
         
         try:
@@ -198,8 +208,8 @@ class CredentialPool:
                 response = await client.post(
                     "https://oauth2.googleapis.com/token",
                     data={
-                        "client_id": settings.google_client_id,
-                        "client_secret": settings.google_client_secret,
+                        "client_id": client_id,
+                        "client_secret": client_secret,
                         "refresh_token": refresh_token,
                         "grant_type": "refresh_token"
                     }
@@ -210,7 +220,7 @@ class CredentialPool:
                 if "access_token" in data:
                     print(f"[Token刷新] 刷新成功!", flush=True)
                     return data["access_token"]
-                print(f"[Token刷新] 刷新失败: {data.get('error', 'unknown')}", flush=True)
+                print(f"[Token刷新] 刷新失败: {data.get('error', 'unknown')} - {data.get('error_description', '')}", flush=True)
                 return None
         except Exception as e:
             print(f"[Token刷新] 异常: {e}", flush=True)

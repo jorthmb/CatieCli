@@ -78,6 +78,8 @@ class Credential(Base):
     name = Column(String(100), nullable=False)
     api_key = Column(Text, nullable=False)  # Gemini API Key 或 OAuth access_token
     refresh_token = Column(Text, nullable=True)  # OAuth refresh_token
+    client_id = Column(Text, nullable=True)  # OAuth client_id（加密存储）
+    client_secret = Column(Text, nullable=True)  # OAuth client_secret（加密存储）
     project_id = Column(String(200), nullable=True)  # Google Cloud Project ID
     credential_type = Column(String(20), default="api_key")  # api_key 或 oauth
     model_tier = Column(String(10), default="2.5")  # 模型等级: "3" 或 "2.5"
