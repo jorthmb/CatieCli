@@ -539,13 +539,19 @@ async def get_stats_overview(
 ):
     """获取统计概览"""
     now = datetime.utcnow()
-    today = now.date()
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
     
-    # 今日请求数
+    # 计算今天的开始时间（UTC 07:00 = 北京时间 15:00）
+    reset_time_utc = now.replace(hour=7, minute=0, second=0, microsecond=0)
+    if now < reset_time_utc:
+        start_of_day = reset_time_utc - timedelta(days=1)
+    else:
+        start_of_day = reset_time_utc
+    
+    # 今日请求数（基于 UTC 07:00 重置）
     today_result = await db.execute(
-        select(func.count(UsageLog.id)).where(func.date(UsageLog.created_at) == today)
+        select(func.count(UsageLog.id)).where(UsageLog.created_at >= start_of_day)
     )
     today_requests = today_result.scalar() or 0
     
@@ -680,6 +686,9 @@ async def get_config(user: User = Depends(get_current_admin)):
         "discord_oauth_only": settings.discord_oauth_only,
         "default_daily_quota": settings.default_daily_quota,
         "no_credential_quota": settings.no_credential_quota,
+        "no_cred_quota_flash": settings.no_cred_quota_flash,
+        "no_cred_quota_25pro": settings.no_cred_quota_25pro,
+        "no_cred_quota_30pro": settings.no_cred_quota_30pro,
         "credential_reward_quota": settings.credential_reward_quota,
         "credential_reward_quota_25": settings.credential_reward_quota_25,
         "credential_reward_quota_30": settings.credential_reward_quota_30,
@@ -734,6 +743,9 @@ async def update_config(
     discord_oauth_only: Optional[bool] = Form(None),
     default_daily_quota: Optional[int] = Form(None),
     no_credential_quota: Optional[int] = Form(None),
+    no_cred_quota_flash: Optional[int] = Form(None),
+    no_cred_quota_25pro: Optional[int] = Form(None),
+    no_cred_quota_30pro: Optional[int] = Form(None),
     credential_reward_quota: Optional[int] = Form(None),
     credential_reward_quota_25: Optional[int] = Form(None),
     credential_reward_quota_30: Optional[int] = Form(None),
@@ -776,6 +788,18 @@ async def update_config(
         settings.no_credential_quota = no_credential_quota
         await save_config_to_db("no_credential_quota", no_credential_quota)
         updated["no_credential_quota"] = no_credential_quota
+    if no_cred_quota_flash is not None:
+        settings.no_cred_quota_flash = no_cred_quota_flash
+        await save_config_to_db("no_cred_quota_flash", no_cred_quota_flash)
+        updated["no_cred_quota_flash"] = no_cred_quota_flash
+    if no_cred_quota_25pro is not None:
+        settings.no_cred_quota_25pro = no_cred_quota_25pro
+        await save_config_to_db("no_cred_quota_25pro", no_cred_quota_25pro)
+        updated["no_cred_quota_25pro"] = no_cred_quota_25pro
+    if no_cred_quota_30pro is not None:
+        settings.no_cred_quota_30pro = no_cred_quota_30pro
+        await save_config_to_db("no_cred_quota_30pro", no_cred_quota_30pro)
+        updated["no_cred_quota_30pro"] = no_cred_quota_30pro
     if credential_reward_quota is not None:
         settings.credential_reward_quota = credential_reward_quota
         await save_config_to_db("credential_reward_quota", credential_reward_quota)

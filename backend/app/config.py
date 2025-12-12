@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     default_daily_quota: int = 100  # 新用户默认配额
     no_credential_quota: int = 0    # 无有效凭证用户的配额上限（0=无限制，使用用户自己的配额）
     
+    # 无凭证用户按模型分类的配额（0=禁止使用该类模型）
+    no_cred_quota_flash: int = 100  # 无凭证用户 Flash 配额
+    no_cred_quota_25pro: int = 50   # 无凭证用户 2.5 Pro 配额
+    no_cred_quota_30pro: int = 0    # 无凭证用户 3.0 配额（默认禁止）
+    
     # 凭证奖励：按模型分类的额度配置
     # 2.5凭证奖励 = quota_flash + quota_25pro
     # 3.0凭证奖励 = quota_flash + quota_25pro + quota_30pro
@@ -102,6 +107,9 @@ PERSISTENT_CONFIG_KEYS = [
     "discord_oauth_only", 
     "default_daily_quota",
     "no_credential_quota",
+    "no_cred_quota_flash",
+    "no_cred_quota_25pro",
+    "no_cred_quota_30pro",
     "credential_reward_quota",
     "credential_reward_quota_25",
     "credential_reward_quota_30",
