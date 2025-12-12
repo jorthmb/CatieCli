@@ -58,6 +58,8 @@ export default function Settings() {
       
       await api.post('/api/manage/config', formData)
       setMessage({ type: 'success', text: '配置已保存！' })
+      // 保存成功后滚动到顶部
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setMessage({ type: 'error', text: '保存失败: ' + (err.response?.data?.detail || err.message) })
     } finally {
