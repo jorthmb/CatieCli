@@ -506,10 +506,11 @@ async def upload_credentials(
             # 2.5凭证 = quota_flash + quota_25pro
             # 3.0凭证 = quota_flash + quota_25pro + quota_30pro
             if actual_public and is_valid:
+                # 使用管理员配置的分类额度计算奖励（与前端显示一致）
                 if model_tier == "3":
-                    reward = settings.credential_reward_quota_30
+                    reward = settings.quota_flash + settings.quota_25pro + settings.quota_30pro
                 else:
-                    reward = settings.credential_reward_quota_25
+                    reward = settings.quota_flash + settings.quota_25pro
                 user.daily_quota += reward
                 print(f"[上传凭证] 用户 {user.username} 获得 {reward} 额度奖励 (等级: {model_tier})", flush=True)
             
@@ -604,11 +605,12 @@ async def update_my_credential(
             if cred.last_error and ('403' in cred.last_error or '401' in cred.last_error or '认证' in cred.last_error or '无效' in cred.last_error):
                 raise HTTPException(status_code=400, detail="凭证存在认证错误，不能捐赠")
             # 捐赠奖励配额（只有从私有变公开才奖励，根据凭证等级）
+            # 使用管理员配置的分类额度计算奖励（与前端显示一致）
             if not cred.is_public:
                 if cred.model_tier == "3":
-                    reward = settings.credential_reward_quota_30
+                    reward = settings.quota_flash + settings.quota_25pro + settings.quota_30pro
                 else:
-                    reward = settings.credential_reward_quota_25
+                    reward = settings.quota_flash + settings.quota_25pro
                 user.daily_quota += reward
                 print(f"[凭证捐赠] 用户 {user.username} 获得 {reward} 额度奖励 (等级: {cred.model_tier})", flush=True)
         else:
@@ -617,11 +619,11 @@ async def update_my_credential(
                 # 检查锁定捐赠（有效凭证不允许取消）
                 if settings.lock_donate and cred.is_active:
                     raise HTTPException(status_code=400, detail="站长已锁定捐赠，有效凭证不能取消捐赠")
-                # 根据凭证等级扣除额度
+                # 根据凭证等级扣除额度（使用管理员配置的分类额度）
                 if cred.model_tier == "3":
-                    deduct = settings.credential_reward_quota_30
+                    deduct = settings.quota_flash + settings.quota_25pro + settings.quota_30pro
                 else:
-                    deduct = settings.credential_reward_quota_25
+                    deduct = settings.quota_flash + settings.quota_25pro
                 # 仅在当前额度包含奖励部分时才回收，避免把自定义额度打回默认
                 if user.daily_quota - settings.default_daily_quota >= deduct:
                     user.daily_quota = max(
@@ -652,12 +654,12 @@ async def delete_my_credential(
     if not cred:
         raise HTTPException(status_code=404, detail="凭证不存在")
     
-    # 如果是公开凭证，删除时根据凭证等级扣除配额
+    # 如果是公开凭证，删除时根据凭证等级扣除配额（使用管理员配置的分类额度）
     if cred.is_public:
         if cred.model_tier == "3":
-            deduct = settings.credential_reward_quota_30
+            deduct = settings.quota_flash + settings.quota_25pro + settings.quota_30pro
         else:
-            deduct = settings.credential_reward_quota_25
+            deduct = settings.quota_flash + settings.quota_25pro
         # 仅在当前额度包含奖励部分时才回收，避免把自定义额度打回默认
         if user.daily_quota - settings.default_daily_quota >= deduct:
             user.daily_quota = max(
