@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models.user import User, Credential, UsageLog
 from app.services.auth import get_current_user, get_current_admin
 from app.services.crypto import encrypt_credential, decrypt_credential
+from app.services.websocket import notify_stats_update
 from app.config import settings
 
 router = APIRouter(prefix="/api/manage", tags=["管理功能"])
@@ -390,6 +391,9 @@ async def start_all_credentials(
         
         _background_tasks[task_id] = {"status": "done", "total": total, "success": success, "failed": failed}
         print(f"[启动凭证] 完成: 成功 {success}, 失败 {failed}", flush=True)
+        
+        # 通知前端刷新统计数据
+        await notify_stats_update()
     
     # 启动后台任务
     asyncio.create_task(run_in_background())
@@ -536,6 +540,9 @@ async def verify_all_credentials(
         
         _background_tasks[task_id] = {"status": "done", "total": total, "valid": valid, "invalid": invalid, "tier3": tier3, "pro": pro}
         print(f"[检测凭证] 完成: 有效 {valid}, 无效 {invalid}, 3.0 {tier3}", flush=True)
+        
+        # 通知前端刷新统计数据
+        await notify_stats_update()
     
     asyncio.create_task(run_in_background())
     
