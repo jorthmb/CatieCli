@@ -1,7 +1,7 @@
 """
 管理功能路由 - 凭证管理、配置、统计等
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
@@ -301,13 +301,20 @@ async def verify_credential(
     }
 
 
+# 后台任务状态存储
+_background_tasks = {}
+
 @router.post("/credentials/start-all")
 async def start_all_credentials(
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """一键启动所有凭证（刷新所有 OAuth 凭证的 access_token）"""
+    """一键启动所有凭证（后台任务，立即返回）"""
+    import asyncio
     from app.services.credential_pool import CredentialPool
+    from app.services.crypto import encrypt_credential
+    from app.database import async_session_maker
     
     result = await db.execute(
         select(Credential).where(
@@ -316,47 +323,84 @@ async def start_all_credentials(
         )
     )
     creds = result.scalars().all()
+    total = len(creds)
     
-    results = {"total": len(creds), "success": 0, "failed": 0, "details": []}
+    # 提取凭证数据（避免 session 关闭后无法访问）
+    cred_data = [{
+        "id": c.id,
+        "email": c.email,
+        "refresh_token": c.refresh_token,
+        "client_id": c.client_id,
+        "client_secret": c.client_secret,
+    } for c in creds]
     
-    for cred in creds:
-        try:
-            access_token = await CredentialPool.refresh_access_token(cred)
-            if access_token:
-                # 更新 access_token
-                from app.services.crypto import encrypt_credential
-                cred.api_key = encrypt_credential(access_token)
-                cred.is_active = True
-                cred.last_error = None
-                await db.merge(cred)
-                results["success"] += 1
-                results["details"].append({
-                    "id": cred.id,
-                    "email": cred.email,
-                    "status": "success"
-                })
-                print(f"[启动凭证] ✅ {cred.email} 刷新成功", flush=True)
-            else:
-                results["failed"] += 1
-                results["details"].append({
-                    "id": cred.id,
-                    "email": cred.email,
-                    "status": "failed",
-                    "reason": "刷新 token 失败"
-                })
-                print(f"[启动凭证] ❌ {cred.email} 刷新失败", flush=True)
-        except Exception as e:
-            results["failed"] += 1
-            results["details"].append({
-                "id": cred.id,
-                "email": cred.email,
-                "status": "error",
-                "reason": str(e)[:50]
-            })
-            print(f"[启动凭证] ❌ {cred.email} 异常: {e}", flush=True)
+    task_id = f"start_{datetime.utcnow().timestamp()}"
+    _background_tasks[task_id] = {"status": "running", "total": total, "success": 0, "failed": 0, "progress": 0}
     
-    await db.commit()
-    return results
+    async def run_in_background():
+        """后台执行刷新"""
+        semaphore = asyncio.Semaphore(50)  # 更高并发
+        success = 0
+        failed = 0
+        
+        async def refresh_single(data):
+            nonlocal success, failed
+            async with semaphore:
+                try:
+                    # 创建临时凭证对象用于刷新
+                    temp_cred = Credential(
+                        id=data["id"],
+                        refresh_token=data["refresh_token"],
+                        client_id=data["client_id"],
+                        client_secret=data["client_secret"]
+                    )
+                    access_token = await CredentialPool.refresh_access_token(temp_cred)
+                    return {"id": data["id"], "email": data["email"], "token": access_token}
+                except Exception as e:
+                    print(f"[启动凭证] ❌ {data['email']} 异常: {e}", flush=True)
+                    return {"id": data["id"], "email": data["email"], "token": None}
+        
+        # 并发刷新
+        print(f"[启动凭证] 后台开始刷新 {total} 个凭证...", flush=True)
+        results = await asyncio.gather(*[refresh_single(d) for d in cred_data])
+        
+        # 批量更新数据库
+        async with async_session_maker() as session:
+            for res in results:
+                if res["token"]:
+                    await session.execute(
+                        update(Credential)
+                        .where(Credential.id == res["id"])
+                        .values(
+                            api_key=encrypt_credential(res["token"]),
+                            is_active=True,
+                            last_error=None
+                        )
+                    )
+                    success += 1
+                    print(f"[启动凭证] ✅ {res['email']}", flush=True)
+                else:
+                    failed += 1
+            await session.commit()
+        
+        _background_tasks[task_id] = {"status": "done", "total": total, "success": success, "failed": failed}
+        print(f"[启动凭证] 完成: 成功 {success}, 失败 {failed}", flush=True)
+    
+    # 启动后台任务
+    asyncio.create_task(run_in_background())
+    
+    return {"message": "后台任务已启动", "task_id": task_id, "total": total}
+
+
+@router.get("/credentials/task-status/{task_id}")
+async def get_task_status(
+    task_id: str,
+    user: User = Depends(get_current_admin)
+):
+    """查询后台任务状态"""
+    if task_id not in _background_tasks:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return _background_tasks[task_id]
 
 
 @router.post("/credentials/verify-all")
@@ -364,104 +408,129 @@ async def verify_all_credentials(
     user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """一键检测所有凭证（包括账号类型检测）"""
+    """一键检测所有凭证（后台任务，立即返回）"""
+    import asyncio
     import httpx
     from app.services.credential_pool import CredentialPool
+    from app.database import async_session_maker
     
     result = await db.execute(select(Credential))
     creds = result.scalars().all()
+    total = len(creds)
     
-    results = {"total": len(creds), "valid": 0, "invalid": 0, "tier3": 0, "pro": 0, "details": []}
+    # 提取凭证数据
+    cred_data = [{
+        "id": c.id,
+        "email": c.email,
+        "refresh_token": c.refresh_token,
+        "client_id": c.client_id,
+        "client_secret": c.client_secret,
+        "project_id": c.project_id,
+        "credential_type": c.credential_type,
+        "api_key": c.api_key,
+    } for c in creds]
     
-    for cred in creds:
-        try:
-            access_token = await CredentialPool.get_access_token(cred, db)
-            if not access_token:
-                cred.is_active = False
-                db.add(cred)
-                results["invalid"] += 1
-                results["details"].append({"id": cred.id, "email": cred.email, "status": "invalid", "reason": "无法获取 token"})
-                continue
-            
-            is_valid = False
-            supports_3 = False
-            account_type = "unknown"
-            
-            async with httpx.AsyncClient(timeout=15) as client:
-                test_url = "https://cloudcode-pa.googleapis.com/v1internal:generateContent"
-                headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-                
-                # 先测试 2.5 验证凭证有效性
-                test_payload_25 = {
-                    "model": "gemini-2.5-flash",
-                    "project": cred.project_id or "",
-                    "request": {"contents": [{"role": "user", "parts": [{"text": "hi"}]}]}
-                }
-                resp = await client.post(test_url, headers=headers, json=test_payload_25)
-                if resp.status_code == 200 or resp.status_code == 429:
-                    is_valid = True
-                    
-                    # 凭证有效，再测试是否支持 3.0 模型
-                    test_payload_3 = {
-                        "model": "gemini-3-pro-preview",
-                        "project": cred.project_id or "",
-                        "request": {"contents": [{"role": "user", "parts": [{"text": "hi"}]}]}
-                    }
-                    resp_3 = await client.post(test_url, headers=headers, json=test_payload_3)
-                    if resp_3.status_code == 200 or resp_3.status_code == 429:
-                        supports_3 = True
-                        print(f"[检测] {cred.email} 支持 3.0 模型", flush=True)
-                    else:
-                        supports_3 = False
-                        print(f"[检测] {cred.email} 不支持 3.0 模型 (status={resp_3.status_code})", flush=True)
-            
-            # 检测账号类型（Pro/Free）
-            if is_valid and cred.project_id:
+    task_id = f"verify_{datetime.utcnow().timestamp()}"
+    _background_tasks[task_id] = {"status": "running", "total": total, "valid": 0, "invalid": 0, "tier3": 0, "pro": 0}
+    
+    async def run_in_background():
+        """后台执行检测"""
+        semaphore = asyncio.Semaphore(50)
+        valid = 0
+        invalid = 0
+        tier3 = 0
+        pro = 0
+        updates = []
+        
+        async def verify_single(data):
+            async with semaphore:
                 try:
-                    type_result = await CredentialPool.detect_account_type(access_token, cred.project_id)
-                    account_type = type_result.get("account_type", "unknown")
-                    print(f"[检测] {cred.email}: account_type={account_type}, result={type_result}", flush=True)
+                    # 获取 access_token
+                    temp_cred = Credential(
+                        id=data["id"],
+                        refresh_token=data["refresh_token"],
+                        client_id=data["client_id"],
+                        client_secret=data["client_secret"],
+                        project_id=data["project_id"],
+                        credential_type=data["credential_type"],
+                        api_key=data["api_key"],
+                    )
+                    access_token = await CredentialPool.refresh_access_token(temp_cred) if temp_cred.refresh_token else None
+                    if not access_token:
+                        return {"id": data["id"], "email": data["email"], "is_valid": False, "supports_3": False, "account_type": "unknown"}
+                    
+                    is_valid = False
+                    supports_3 = False
+                    account_type = "unknown"
+                    
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        test_url = "https://cloudcode-pa.googleapis.com/v1internal:generateContent"
+                        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+                        
+                        # 测试 2.5
+                        test_payload = {
+                            "model": "gemini-2.5-flash",
+                            "project": data["project_id"] or "",
+                            "request": {"contents": [{"role": "user", "parts": [{"text": "hi"}]}]}
+                        }
+                        resp = await client.post(test_url, headers=headers, json=test_payload)
+                        if resp.status_code in [200, 429]:
+                            is_valid = True
+                            # 测试 3.0
+                            test_payload["model"] = "gemini-3-pro-preview"
+                            resp_3 = await client.post(test_url, headers=headers, json=test_payload)
+                            supports_3 = resp_3.status_code in [200, 429]
+                    
+                    # 检测账号类型
+                    if is_valid and data["project_id"]:
+                        try:
+                            type_result = await CredentialPool.detect_account_type(access_token, data["project_id"])
+                            account_type = type_result.get("account_type", "unknown")
+                        except:
+                            pass
+                    
+                    return {"id": data["id"], "email": data["email"], "is_valid": is_valid, "supports_3": supports_3, "account_type": account_type, "token": access_token}
                 except Exception as e:
-                    print(f"[检测] {cred.email} 检测账号类型失败: {e}", flush=True)
+                    print(f"[检测] ❌ {data['email']} 异常: {e}", flush=True)
+                    return {"id": data["id"], "email": data["email"], "is_valid": False, "supports_3": False, "account_type": "unknown"}
+        
+        print(f"[检测凭证] 后台开始检测 {total} 个凭证...", flush=True)
+        results = await asyncio.gather(*[verify_single(d) for d in cred_data])
+        
+        # 批量更新数据库
+        async with async_session_maker() as session:
+            for res in results:
+                model_tier = "3" if res["supports_3"] else "2.5"
+                update_vals = {"is_active": res["is_valid"], "model_tier": model_tier}
+                if res.get("account_type") != "unknown":
+                    update_vals["account_type"] = res["account_type"]
+                if res.get("token"):
+                    from app.services.crypto import encrypt_credential
+                    update_vals["api_key"] = encrypt_credential(res["token"])
+                
+                await session.execute(
+                    update(Credential).where(Credential.id == res["id"]).values(**update_vals)
+                )
+                
+                if res["is_valid"]:
+                    valid += 1
+                    if res["supports_3"]:
+                        tier3 += 1
+                    if res["account_type"] == "pro":
+                        pro += 1
+                    print(f"[检测] ✅ {res['email']} tier={model_tier}", flush=True)
+                else:
+                    invalid += 1
+                    print(f"[检测] ❌ {res['email']}", flush=True)
             
-            cred.is_active = is_valid
-            # 根据实际模型检测结果设置 tier（Pro 是账号类型，不代表支持 3.0）
-            cred.model_tier = "3" if supports_3 else "2.5"
-            # 存储账号类型到专用字段
-            if account_type != "unknown":
-                cred.account_type = account_type
-            
-            # 确保变更被追踪并立即写入
-            print(f"[检测] 设置 {cred.email} model_tier={cred.model_tier}, account_type={account_type}, supports_3={supports_3}", flush=True)
-            await db.merge(cred)
-            await db.flush()
-            
-            if is_valid:
-                results["valid"] += 1
-                if supports_3:
-                    results["tier3"] += 1
-                if account_type == "pro":
-                    results["pro"] += 1
-                reason = "配额用尽(429)" if resp.status_code == 429 else None
-                results["details"].append({
-                    "id": cred.id, 
-                    "email": cred.email, 
-                    "status": "valid", 
-                    "tier": cred.model_tier,
-                    "account_type": account_type,
-                    "note": reason
-                })
-            else:
-                results["invalid"] += 1
-                results["details"].append({"id": cred.id, "email": cred.email, "status": "invalid", "reason": f"API 返回 {resp.status_code}"})
-        except Exception as e:
-            cred.is_active = False
-            db.add(cred)
-            results["invalid"] += 1
-            results["details"].append({"id": cred.id, "email": cred.email, "status": "error", "reason": str(e)[:50]})
+            await session.commit()
+        
+        _background_tasks[task_id] = {"status": "done", "total": total, "valid": valid, "invalid": invalid, "tier3": tier3, "pro": pro}
+        print(f"[检测凭证] 完成: 有效 {valid}, 无效 {invalid}, 3.0 {tier3}", flush=True)
     
-    await db.commit()
-    return results
+    asyncio.create_task(run_in_background())
+    
+    return {"message": "后台任务已启动", "task_id": task_id, "total": total}
 
 
 # Google Gemini CLI 配额参考（每日请求数限制）

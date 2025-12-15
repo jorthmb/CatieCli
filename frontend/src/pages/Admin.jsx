@@ -171,26 +171,45 @@ export default function Admin() {
     }, true)
   }
 
+  const pollTaskStatus = async (taskId, type) => {
+    // 轮询任务状态
+    const poll = async () => {
+      try {
+        const res = await api.get(`/api/manage/credentials/task-status/${taskId}`)
+        if (res.data.status === 'done') {
+          fetchData()
+          if (type === 'verify') {
+            setVerifyingAll(false)
+            setVerifyResult(res.data)
+            showAlert('检测完成', `总计: ${res.data.total}\n有效: ${res.data.valid}\n无效: ${res.data.invalid}\n3.0可用: ${res.data.tier3}\nPro账号: ${res.data.pro}`, 'success')
+          } else {
+            setStartingAll(false)
+            setStartResult(res.data)
+            showAlert('启动完成', `总计: ${res.data.total}\n成功: ${res.data.success}\n失败: ${res.data.failed}`, 'success')
+          }
+        } else {
+          // 继续轮询
+          setTimeout(poll, 2000)
+        }
+      } catch (err) {
+        console.error('轮询失败', err)
+        setTimeout(poll, 3000)
+      }
+    }
+    poll()
+  }
+
   const verifyAllCredentials = () => {
     showConfirm('检测凭证', '确定要检测所有凭证？检测将在后台运行，完成后会弹窗通知结果。', async () => {
       setVerifyingAll(true)
       setVerifyResult(null)
-      showAlert('检测中', '凭证检测已开始，请稍候...检测完成后会弹窗通知', 'info')
       try {
-        const res = await api.post('/api/manage/credentials/verify-all', null, {
-          timeout: 600000 // 10分钟超时
-        })
-        setVerifyResult(res.data)
-        fetchData()
-        showAlert('检测完成', `总计: ${res.data.total}\n有效: ${res.data.valid}\n无效: ${res.data.invalid}\n3.0可用: ${res.data.tier3}\nPro账号: ${res.data.pro}`, 'success')
+        const res = await api.post('/api/manage/credentials/verify-all')
+        showAlert('检测中', `后台任务已启动，正在检测 ${res.data.total} 个凭证...`, 'info')
+        pollTaskStatus(res.data.task_id, 'verify')
       } catch (err) {
-        if (err.code === 'ECONNABORTED') {
-          showAlert('检测超时', '检测时间过长，请稍后刷新页面查看结果', 'error')
-        } else {
-          showAlert('检测失败', err.response?.data?.detail || err.message, 'error')
-        }
-      } finally {
         setVerifyingAll(false)
+        showAlert('检测失败', err.response?.data?.detail || err.message, 'error')
       }
     })
   }
@@ -199,22 +218,13 @@ export default function Admin() {
     showConfirm('启动凭证', '确定要一键启动所有凭证？将刷新所有 OAuth 凭证的 access_token。', async () => {
       setStartingAll(true)
       setStartResult(null)
-      showAlert('启动中', '正在刷新所有凭证的 token，请稍候...', 'info')
       try {
-        const res = await api.post('/api/manage/credentials/start-all', null, {
-          timeout: 300000 // 5分钟超时
-        })
-        setStartResult(res.data)
-        fetchData()
-        showAlert('启动完成', `总计: ${res.data.total}\n成功: ${res.data.success}\n失败: ${res.data.failed}`, 'success')
+        const res = await api.post('/api/manage/credentials/start-all')
+        showAlert('启动中', `后台任务已启动，正在刷新 ${res.data.total} 个凭证...`, 'info')
+        pollTaskStatus(res.data.task_id, 'start')
       } catch (err) {
-        if (err.code === 'ECONNABORTED') {
-          showAlert('启动超时', '操作时间过长，请稍后刷新页面查看结果', 'error')
-        } else {
-          showAlert('启动失败', err.response?.data?.detail || err.message, 'error')
-        }
-      } finally {
         setStartingAll(false)
+        showAlert('启动失败', err.response?.data?.detail || err.message, 'error')
       }
     })
   }
