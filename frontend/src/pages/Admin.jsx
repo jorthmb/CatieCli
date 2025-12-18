@@ -4,6 +4,7 @@ import {
     Check,
     Download,
     ExternalLink,
+    Eye,
     Key,
     Plus,
     RefreshCw,
